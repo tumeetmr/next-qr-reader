@@ -6,6 +6,8 @@ A high-performance, React-based QR code reader component for Next.js application
 
 - Smooth, continuous QR code scanning
 - Optimized for performance using `requestAnimationFrame`
+- **4 beautiful UI variants** with smooth animations
+- Customizable detector frames and scan lines
 - Customizable scan interval and camera constraints
 - Error handling with optional callback
 - TypeScript support
@@ -65,8 +67,75 @@ export default QRCodeScanner;
 | `className` | `string` | `''` | Additional CSS classes to apply to the component |
 | `scanInterval` | `number` | `120` | Minimum interval (in ms) between scan attempts |
 | `onError` | `(error: Error) => void` | `undefined` | Callback function called when an error occurs during scanning |
+| `variant` | `'default' \| 'minimal' \| 'ios' \| 'clean'` | `'default'` | UI style variant for the detector frame |
+| `showFrame` | `boolean` | `true` | Show/hide the detector frame overlay |
+| `frameColor` | `string` | `'white'` | Color of the detector frame (any CSS color) |
+| `showScanLine` | `boolean` | `true` | Show/hide the animated scanning line |
 
 ## Advanced Usage
+
+### UI Variants
+
+The component includes 4 beautiful UI variants with smooth animations:
+
+#### **iOS Variant** (iPhone Camera Style)
+Corner brackets with radial vignette and scanning line animation.
+
+```jsx
+<Reader
+  onResult={handleResult}
+  variant="ios"
+  frameColor="white"
+/>
+```
+
+#### **Minimal Variant** (Clean & Subtle)
+Minimalist transparent border with soft animations.
+
+```jsx
+<Reader
+  onResult={handleResult}
+  variant="minimal"
+  frameColor="white"
+/>
+```
+
+#### **Clean Variant** (Grid Style)
+Grid overlay with rounded frame, corner dots, and scan line.
+
+```jsx
+<Reader
+  onResult={handleResult}
+  variant="clean"
+  frameColor="white"
+/>
+```
+
+#### **Default Variant** (Classic)
+Simple centered square frame - original style.
+
+```jsx
+<Reader
+  onResult={handleResult}
+  variant="default"
+  frameColor="white"
+/>
+```
+
+### Customizing the Detector Frame
+
+Control the appearance of the scanning UI:
+
+```jsx
+<Reader
+  onResult={handleResult}
+  variant="ios"
+  showFrame={true}           // Show/hide frame
+  frameColor="#00ff00"       // Customize color (any CSS color)
+  showScanLine={true}        // Toggle scanning animation
+  className="w-full max-w-md mx-auto"
+/>
+```
 
 ### Custom Camera Constraints
 

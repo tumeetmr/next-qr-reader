@@ -1,3 +1,94 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* QR Reader Animations */
+@keyframes scan {
+  0% {
+    top: 0;
+  }
+  100% {
+    top: 100%;
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes cornerPulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+/* QR Reader Component Styles */
+.qr-reader-container {
+  @apply relative w-full overflow-hidden bg-black;
+}
+
+.qr-reader-frame {
+  @apply absolute inset-0 pointer-events-none;
+}
+
+.qr-reader-frame-corner {
+  @apply absolute w-12 h-12;
+}
+
+.qr-scan-line {
+  animation: scan 2s infinite;
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2px;
+}
+
+.qr-pulse-dot {
+  animation: pulse-dot 1s infinite;
+}
+
+.qr-pulse-ring {
+  animation: pulse-ring 1.5s infinite;
+}
+
+.qr-scanning-indicator {
+  @apply absolute bottom-8 left-1/2 transform -translate-x-1/2 flex items-center gap-3;
+}
+
+.qr-scanner-enter {
+  animation: fadeInScale 0.5s ease-out;
+}

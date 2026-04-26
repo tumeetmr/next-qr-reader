@@ -10,6 +10,7 @@ A high-performance, React-based QR code reader component for Next.js application
 - Customizable detector frames and scan lines
 - Customizable scan interval and camera constraints
 - Optional vertical camera preview flip
+- Optional horizontal camera preview flip (mirror correction)
 - Programmatic camera on/off control
 - Error handling with optional callback
 - TypeScript support
@@ -74,6 +75,7 @@ export default QRCodeScanner;
 | `frameColor` | `string` | `'white'` | Color of the detector frame (any CSS color) |
 | `showScanLine` | `boolean` | `true` | Show/hide the animated scanning line |
 | `flipVertical` | `boolean` | `false` | Flips the camera preview vertically (helpful for mirrored UI setups) |
+| `flipHorizontal` | `boolean` | `false` | Flips the camera preview horizontally (use this when left/right movement feels mirrored) |
 | `cameraEnabled` | `boolean` | `true` | Turns camera stream and scanning loop on/off programmatically |
 
 ## Advanced Usage
@@ -156,9 +158,9 @@ You can customize the camera constraints to fit your needs:
 />
 ```
 
-### Camera On/Off + Vertical Reverse
+### Camera On/Off + Flip Controls
 
-Control camera lifecycle and vertically flip preview when needed:
+Control camera lifecycle and choose the preview flip direction:
 
 ```jsx
 import React, { useState } from 'react';
@@ -179,7 +181,8 @@ const ControlledScanner = () => {
       <Reader
         onResult={(result) => console.log(result)}
         cameraEnabled={cameraEnabled}
-        flipVertical={true}
+        flipHorizontal={true} // keeps right/left movement natural for mirrored front camera feeds
+        flipVertical={false}  // set true only if you need upside-down correction
       />
     </div>
   );

@@ -15,6 +15,7 @@ interface ReaderProps {
   frameColor?: string;
   showScanLine?: boolean;
   flipVertical?: boolean;
+  flipHorizontal?: boolean;
   cameraEnabled?: boolean;
 }
 
@@ -29,6 +30,7 @@ const Reader: React.FC<ReaderProps> = ({
   frameColor = 'white',
   showScanLine = true,
   flipVertical = false,
+  flipHorizontal = false,
   cameraEnabled = true
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -38,6 +40,8 @@ const Reader: React.FC<ReaderProps> = ({
   const canvasContextRef = useRef<CanvasRenderingContext2D | null>(null);
   const isScanningRef = useRef(false);
   const isMountedRef = useRef(true);
+  const cameraEnabledRef = useRef(cameraEnabled);
+  const cameraStartAttemptRef = useRef(0);
   const previousTimeRef = useRef(0);
   const lastResultRef = useRef<string | null>(null);
 
@@ -49,13 +53,25 @@ const Reader: React.FC<ReaderProps> = ({
   }, []);
 
   const startCamera = useCallback(async () => {
+    if (!cameraEnabledRef.current) {
+      return;
+    }
+
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
       onError?.(new Error('Camera API is not available in this environment'));
       return;
     }
 
     try {
+      const startAttempt = ++cameraStartAttemptRef.current;
       const stream = await navigator.mediaDevices.getUserMedia({ video: constraints, audio: false });
+
+      // If camera was disabled or a newer start attempt exists, immediately release this stream.
+      if (!isMountedRef.current || !cameraEnabledRef.current || startAttempt !== cameraStartAttemptRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
       if (videoRef.current) {
         streamRef.current = stream;
         videoRef.current.srcObject = stream;
@@ -74,6 +90,7 @@ const Reader: React.FC<ReaderProps> = ({
   const stopCamera = useCallback(() => {
     isScanningRef.current = false;
     stopAnimationLoop();
+    cameraStartAttemptRef.current += 1;
     lastResultRef.current = null;
     previousTimeRef.current = 0;
 
@@ -82,6 +99,7 @@ const Reader: React.FC<ReaderProps> = ({
     streamRef.current = null;
 
     if (videoRef.current) {
+      videoRef.current.pause();
       videoRef.current.srcObject = null;
     }
 
@@ -89,6 +107,8 @@ const Reader: React.FC<ReaderProps> = ({
   }, [stopAnimationLoop]);
 
   useEffect(() => {
+    cameraEnabledRef.current = cameraEnabled;
+
     isMountedRef.current = true;
     if (cameraEnabled) {
       void startCamera();
@@ -195,7 +215,7 @@ const Reader: React.FC<ReaderProps> = ({
       {/* Video element */}
       <video 
         ref={videoRef} 
-        className={`w-full h-auto block ${flipVertical ? '-scale-y-100' : ''}`}
+        className={`w-full h-auto block ${flipVertical ? '-scale-y-100' : ''} ${flipHorizontal ? '-scale-x-100' : ''}`}
         playsInline 
         muted
       />

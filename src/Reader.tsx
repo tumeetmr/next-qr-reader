@@ -14,6 +14,8 @@ interface ReaderProps {
   showFrame?: boolean;
   frameColor?: string;
   showScanLine?: boolean;
+  flipVertical?: boolean;
+  cameraEnabled?: boolean;
 }
 
 const Reader: React.FC<ReaderProps> = ({
@@ -25,7 +27,9 @@ const Reader: React.FC<ReaderProps> = ({
   variant = 'default',
   showFrame = true,
   frameColor = 'white',
-  showScanLine = true
+  showScanLine = true,
+  flipVertical = false,
+  cameraEnabled = true
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -70,6 +74,8 @@ const Reader: React.FC<ReaderProps> = ({
   const stopCamera = useCallback(() => {
     isScanningRef.current = false;
     stopAnimationLoop();
+    lastResultRef.current = null;
+    previousTimeRef.current = 0;
 
     const stream = streamRef.current ?? (videoRef.current?.srcObject as MediaStream | null);
     stream?.getTracks().forEach((track) => track.stop());
@@ -83,12 +89,18 @@ const Reader: React.FC<ReaderProps> = ({
   }, [stopAnimationLoop]);
 
   useEffect(() => {
-    startCamera();
+    isMountedRef.current = true;
+    if (cameraEnabled) {
+      void startCamera();
+    } else {
+      stopCamera();
+    }
+
     return () => {
       isMountedRef.current = false;
       stopCamera();
     };
-  }, [startCamera, stopCamera]);
+  }, [cameraEnabled, startCamera, stopCamera]);
 
   const scanQRCode = useCallback((timestamp: number) => {
     if (!isMountedRef.current || (typeof document !== 'undefined' && document.hidden)) {
@@ -152,6 +164,14 @@ const Reader: React.FC<ReaderProps> = ({
 
   useEffect(() => {
     isMountedRef.current = true;
+
+    if (!cameraEnabled) {
+      stopAnimationLoop();
+      return () => {
+        stopAnimationLoop();
+      };
+    }
+
     requestRef.current = requestAnimationFrame(scanQRCode);
 
     const onVisibilityChange = () => {
@@ -168,14 +188,14 @@ const Reader: React.FC<ReaderProps> = ({
       document.removeEventListener('visibilitychange', onVisibilityChange);
       stopAnimationLoop();
     };
-  }, [scanQRCode, stopAnimationLoop]);
+  }, [cameraEnabled, scanQRCode, stopAnimationLoop]);
 
   return (
     <div className={`relative w-full overflow-hidden bg-black ${className}`}>
       {/* Video element */}
       <video 
         ref={videoRef} 
-        className="w-full h-auto block" 
+        className={`w-full h-auto block ${flipVertical ? '-scale-y-100' : ''}`}
         playsInline 
         muted
       />

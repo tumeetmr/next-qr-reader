@@ -9,6 +9,8 @@ A high-performance, React-based QR code reader component for Next.js application
 - **4 beautiful UI variants** with smooth animations
 - Customizable detector frames and scan lines
 - Customizable scan interval and camera constraints
+- Optional vertical camera preview flip
+- Programmatic camera on/off control
 - Error handling with optional callback
 - TypeScript support
 - Easy to integrate with Next.js projects
@@ -71,6 +73,8 @@ export default QRCodeScanner;
 | `showFrame` | `boolean` | `true` | Show/hide the detector frame overlay |
 | `frameColor` | `string` | `'white'` | Color of the detector frame (any CSS color) |
 | `showScanLine` | `boolean` | `true` | Show/hide the animated scanning line |
+| `flipVertical` | `boolean` | `false` | Flips the camera preview vertically (helpful for mirrored UI setups) |
+| `cameraEnabled` | `boolean` | `true` | Turns camera stream and scanning loop on/off programmatically |
 
 ## Advanced Usage
 
@@ -150,6 +154,36 @@ You can customize the camera constraints to fit your needs:
     height: { ideal: 720 }
   }}
 />
+```
+
+### Camera On/Off + Vertical Reverse
+
+Control camera lifecycle and vertically flip preview when needed:
+
+```jsx
+import React, { useState } from 'react';
+import { Reader } from 'next-qr-reader';
+
+const ControlledScanner = () => {
+  const [cameraEnabled, setCameraEnabled] = useState(true);
+
+  return (
+    <div className="space-y-3">
+      <button
+        type="button"
+        onClick={() => setCameraEnabled((prev) => !prev)}
+      >
+        {cameraEnabled ? 'Turn Camera Off' : 'Turn Camera On'}
+      </button>
+
+      <Reader
+        onResult={(result) => console.log(result)}
+        cameraEnabled={cameraEnabled}
+        flipVertical={true}
+      />
+    </div>
+  );
+};
 ```
 
 ### Error Handling

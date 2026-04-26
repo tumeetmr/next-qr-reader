@@ -63,7 +63,7 @@ export default QRCodeScanner;
 | `onResult` | `(result: string) => void` | Required | Callback function called when a QR code is successfully scanned |
 | `constraints` | `MediaTrackConstraints` | `{ facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }` | Camera constraints for `getUserMedia` |
 | `className` | `string` | `''` | Additional CSS classes to apply to the component |
-| `scanInterval` | `number` | `300` | Minimum interval (in ms) between scan attempts |
+| `scanInterval` | `number` | `120` | Minimum interval (in ms) between scan attempts |
 | `onError` | `(error: Error) => void` | `undefined` | Callback function called when an error occurs during scanning |
 
 ## Advanced Usage

@@ -45,6 +45,13 @@ const Reader: React.FC<ReaderProps> = ({
   const previousTimeRef = useRef(0);
   const lastResultRef = useRef<string | null>(null);
 
+  // FIX: Store latest constraints in a ref so startCamera always uses the current value
+  // without needing to be in the dependency array (avoids stale closures on rapid re-renders)
+  const constraintsRef = useRef(constraints);
+  useEffect(() => {
+    constraintsRef.current = constraints;
+  }, [constraints]);
+
   const stopAnimationLoop = useCallback(() => {
     if (requestRef.current !== null) {
       cancelAnimationFrame(requestRef.current);
@@ -64,7 +71,12 @@ const Reader: React.FC<ReaderProps> = ({
 
     try {
       const startAttempt = ++cameraStartAttemptRef.current;
-      const stream = await navigator.mediaDevices.getUserMedia({ video: constraints, audio: false });
+
+      // FIX: Read from constraintsRef so we always get the latest facingMode/resolution
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: constraintsRef.current,
+        audio: false,
+      });
 
       // If camera was disabled or a newer start attempt exists, immediately release this stream.
       if (!isMountedRef.current || !cameraEnabledRef.current || startAttempt !== cameraStartAttemptRef.current) {
@@ -85,7 +97,7 @@ const Reader: React.FC<ReaderProps> = ({
       console.error('Error accessing the camera:', err);
       onError?.(err instanceof Error ? err : new Error('Failed to access camera'));
     }
-  }, [constraints, onError]);
+  }, [onError]); // removed `constraints` dep — constraintsRef handles it
 
   const stopCamera = useCallback(() => {
     isScanningRef.current = false;
@@ -105,6 +117,14 @@ const Reader: React.FC<ReaderProps> = ({
 
     canvasContextRef.current = null;
   }, [stopAnimationLoop]);
+
+  // FIX: Restart the camera whenever constraints change (e.g. facingMode toggle)
+  useEffect(() => {
+    if (!cameraEnabled) return;
+    stopCamera();
+    void startCamera();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [constraints]); // intentionally only constraints — not startCamera/stopCamera to avoid loop
 
   useEffect(() => {
     cameraEnabledRef.current = cameraEnabled;
@@ -210,32 +230,40 @@ const Reader: React.FC<ReaderProps> = ({
     };
   }, [cameraEnabled, scanQRCode, stopAnimationLoop]);
 
+  // FIX: Use inline styles for transforms — Tailwind's -scale-y-100 / -scale-x-100
+  // are not valid utility classes and silently do nothing. Inline styles are guaranteed to work.
+  const videoTransform = [
+    flipVertical   ? 'scaleY(-1)' : '',
+    flipHorizontal ? 'scaleX(-1)' : '',
+  ].filter(Boolean).join(' ') || undefined;
+
   return (
     <div className={`relative w-full overflow-hidden bg-black ${className}`}>
       {/* Video element */}
-      <video 
-        ref={videoRef} 
-        className={`w-full h-auto block ${flipVertical ? '-scale-y-100' : ''} ${flipHorizontal ? '-scale-x-100' : ''}`}
-        playsInline 
+      <video
+        ref={videoRef}
+        className="w-full h-auto block"
+        style={{ transform: videoTransform }}
+        playsInline
         muted
       />
-      
+
       {/* Canvas for QR scanning */}
-      <canvas 
-        ref={canvasRef} 
+      <canvas
+        ref={canvasRef}
         className="absolute top-0 left-0 w-full h-full opacity-0 pointer-events-none"
       />
-      
+
       {/* Frame overlay */}
       {showFrame && (
         <>
-          {variant === 'ios' && <FrameIOS frameColor={frameColor} showScanLine={showScanLine} />}
+          {variant === 'ios'     && <FrameIOS     frameColor={frameColor} showScanLine={showScanLine} />}
           {variant === 'minimal' && <FrameMinimal frameColor={frameColor} showScanLine={showScanLine} />}
-          {variant === 'clean' && <FrameClean frameColor={frameColor} showScanLine={showScanLine} />}
+          {variant === 'clean'   && <FrameClean   frameColor={frameColor} showScanLine={showScanLine} />}
           {variant === 'default' && <FrameDefault frameColor={frameColor} showScanLine={showScanLine} />}
         </>
       )}
-      
+
       {/* Scanning indicator */}
       {variant !== 'default' && (
         <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
@@ -249,13 +277,10 @@ const Reader: React.FC<ReaderProps> = ({
 // Frame component - iPhone style
 const FrameIOS: React.FC<{ frameColor: string; showScanLine: boolean }> = ({ frameColor, showScanLine }) => (
   <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.5) 100%)' }}>
-    {/* Corner brackets */}
-    <div className="absolute top-0 left-0 w-12 h-12" style={{ borderTop: `3px solid ${frameColor}`, borderLeft: `3px solid ${frameColor}` }} />
-    <div className="absolute top-0 right-0 w-12 h-12" style={{ borderTop: `3px solid ${frameColor}`, borderRight: `3px solid ${frameColor}` }} />
-    <div className="absolute bottom-0 left-0 w-12 h-12" style={{ borderBottom: `3px solid ${frameColor}`, borderLeft: `3px solid ${frameColor}` }} />
+    <div className="absolute top-0 left-0 w-12 h-12"    style={{ borderTop:    `3px solid ${frameColor}`, borderLeft:  `3px solid ${frameColor}` }} />
+    <div className="absolute top-0 right-0 w-12 h-12"   style={{ borderTop:    `3px solid ${frameColor}`, borderRight: `3px solid ${frameColor}` }} />
+    <div className="absolute bottom-0 left-0 w-12 h-12"  style={{ borderBottom: `3px solid ${frameColor}`, borderLeft:  `3px solid ${frameColor}` }} />
     <div className="absolute bottom-0 right-0 w-12 h-12" style={{ borderBottom: `3px solid ${frameColor}`, borderRight: `3px solid ${frameColor}` }} />
-    
-    {/* Scan line */}
     {showScanLine && <ScanLine frameColor={frameColor} />}
   </div>
 );
@@ -271,22 +296,16 @@ const FrameMinimal: React.FC<{ frameColor: string; showScanLine: boolean }> = ({
 // Frame component - Clean style
 const FrameClean: React.FC<{ frameColor: string; showScanLine: boolean }> = ({ frameColor, showScanLine }) => (
   <div className="absolute inset-0 pointer-events-none">
-    {/* Grid overlay */}
     <div className="absolute inset-0" style={{
       backgroundImage: `linear-gradient(${frameColor} 1px, transparent 1px), linear-gradient(90deg, ${frameColor} 1px, transparent 1px)`,
       backgroundSize: '33.33% 33.33%',
       opacity: 0.1
     }} />
-    
-    {/* Rounded frame */}
     <div className="absolute inset-8 rounded-3xl" style={{ border: `2px solid ${frameColor}`, opacity: 0.5 }} />
-    
-    {/* Corner dots */}
     <div className="absolute top-12 left-12 w-2 h-2 rounded-full bg-white opacity-50" />
     <div className="absolute top-12 right-12 w-2 h-2 rounded-full bg-white opacity-50" />
     <div className="absolute bottom-12 left-12 w-2 h-2 rounded-full bg-white opacity-50" />
     <div className="absolute bottom-12 right-12 w-2 h-2 rounded-full bg-white opacity-50" />
-    
     {showScanLine && <ScanLine frameColor={frameColor} />}
   </div>
 );
@@ -317,7 +336,7 @@ const ScanLine: React.FC<{ frameColor: string; opacity?: number }> = ({ frameCol
       opacity: ${opacity};
     }
   `;
-  
+
   return (
     <>
       <style>{scanLineStyle}</style>
@@ -334,23 +353,13 @@ const ScanningIndicator: React.FC<{ variant: UIVariant }> = ({ variant }) => {
       50% { opacity: 0.3; }
     }
     @keyframes pulse-ring {
-      0% { 
-        transform: scale(0.8);
-        opacity: 1;
-      }
-      100% { 
-        transform: scale(1.2);
-        opacity: 0;
-      }
+      0% { transform: scale(0.8); opacity: 1; }
+      100% { transform: scale(1.2); opacity: 0; }
     }
-    .qr-pulse-dot {
-      animation: pulse-dot 1s infinite;
-    }
-    .qr-pulse-ring {
-      animation: pulse-ring 1.5s infinite;
-    }
+    .qr-pulse-dot { animation: pulse-dot 1s infinite; }
+    .qr-pulse-ring { animation: pulse-ring 1.5s infinite; }
   `;
-  
+
   return (
     <>
       <style>{indicatorStyle}</style>
@@ -360,9 +369,9 @@ const ScanningIndicator: React.FC<{ variant: UIVariant }> = ({ variant }) => {
           <div className="qr-pulse-dot absolute inset-0.5 rounded-full bg-blue-400" />
         </div>
         <span className="text-white text-xs font-medium tracking-wide">
-          {variant === 'ios' && 'Scanning'}
+          {variant === 'ios'     && 'Scanning'}
           {variant === 'minimal' && 'Ready'}
-          {variant === 'clean' && 'Active'}
+          {variant === 'clean'   && 'Active'}
         </span>
       </div>
     </>
